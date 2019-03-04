@@ -1,4 +1,6 @@
 import 'package:code_scanner/ScanModel.dart';
+import 'package:code_scanner/CardView.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -6,6 +8,63 @@ class ScanSearchDelegate extends SearchDelegate {
   ScanSearchDelegate(this.bloc);
 
   final bloc;
+
+  Widget listFuture() {
+    return Column(children: <Widget>[
+      //Build the results based on the searchResults stream in the searchBloc
+      FutureBuilder(
+          future: bloc.queryScans(query),
+          builder: (context, AsyncSnapshot<List<Scan>> snapshot) {
+            if (!snapshot.hasData) {
+              return Align(
+                alignment: Alignment.center,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            } else if (snapshot.data.length == 0) {
+              return Align(
+                alignment: Alignment.center,
+                child: Center(child: Text("No Results Found.")),
+              );
+            } else {
+              var results = snapshot.data;
+              var listLen = results.length;
+              return Flexible(
+                  child: ListView.builder(
+                      itemCount: listLen,
+                      itemBuilder: (context, index) {
+                        Scan item = results[listLen - index - 1];
+                        DateTime itemDate =
+                        DateTime.fromMillisecondsSinceEpoch(item.datetime);
+                        String formattedDate =
+                        DateFormat('kk:mm:ss EEE d MMM').format(itemDate);
+                        return InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => CardView(item, bloc)),
+                              );
+                            },
+                            child: Card(
+                              child: Dismissible(
+                                key: UniqueKey(),
+                                background: Container(color: Colors.red),
+                                onDismissed: (direction) {
+                                  bloc.delete(item.id);
+                                },
+                                child: ListTile(
+                                  title: Text(item.name.length > 0
+                                      ? item.name
+                                      : item.code),
+                                  subtitle: Text(formattedDate),
+                                ),
+                              ),
+                            ));
+                      }));
+            }
+          }),
+    ]);
+  }
 
   @override
   List<Widget> buildActions(BuildContext context) {
@@ -31,107 +90,11 @@ class ScanSearchDelegate extends SearchDelegate {
 
   @override
   Widget buildResults(BuildContext context) {
-    if (query.length < 3) {
-      return Align(
-          alignment: Alignment.center,
-          child: Center(
-            child: Text(
-              "Search term must be longer than two letters.",
-            ),
-          ));
-    }
-
-    return Column(children: <Widget>[
-      //Build the results based on the searchResults stream in the searchBloc
-      FutureBuilder(
-          future: bloc.queryScans(query),
-          builder: (context, AsyncSnapshot<List<Scan>> snapshot) {
-            if (!snapshot.hasData) {
-              return Align(
-                alignment: Alignment.center,
-                child: Center(child: CircularProgressIndicator()),
-              );
-            } else if (snapshot.data.length == 0) {
-              return Align(
-                alignment: Alignment.center,
-                child: Center(child: Text("No Results Found.")),
-              );
-            } else {
-              var results = snapshot.data;
-              return Flexible(
-                  child: ListView.builder(
-                      itemCount: results.length,
-                      itemBuilder: (context, index) {
-                        var result = results[index];
-                        DateTime itemDate = DateTime.fromMillisecondsSinceEpoch(
-                            result.datetime);
-                        String formattedDate =
-                            DateFormat('kk:mm:ss EEE d MMM').format(itemDate);
-                        return Card(
-                          child: Dismissible(
-                            key: UniqueKey(),
-                            background: Container(color: Colors.red),
-                            onDismissed: (direction) {
-                              bloc.delete(result.id);
-                            },
-                            child: ListTile(
-                              title: Text(result.code),
-                              subtitle: Text(formattedDate),
-                            ),
-                          ),
-                        );
-                      }));
-            }
-          }),
-    ]);
+    return listFuture();
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    // This method is called everytime the search term changes.
-    // If you want to add search suggestions as the user enters their search term, this is the place to do that.
-    return Column(children: <Widget>[
-      //Build the results based on the searchResults stream in the searchBloc
-      FutureBuilder(
-          future: bloc.queryScans(query),
-          builder: (context, AsyncSnapshot<List<Scan>> snapshot) {
-            if (!snapshot.hasData) {
-              return Align(
-                alignment: Alignment.center,
-                child: Center(child: CircularProgressIndicator()),
-              );
-            } else if (snapshot.data.length == 0) {
-              return Align(
-                alignment: Alignment.center,
-                child: Center(child: Text("No Results Found.")),
-              );
-            } else {
-              var results = snapshot.data;
-              return Flexible(
-                  child: ListView.builder(
-                      itemCount: results.length,
-                      itemBuilder: (context, index) {
-                        var result = results[index];
-                        DateTime itemDate = DateTime.fromMillisecondsSinceEpoch(
-                            result.datetime);
-                        String formattedDate =
-                            DateFormat('kk:mm:ss EEE d MMM').format(itemDate);
-                        return Card(
-                          child: Dismissible(
-                            key: UniqueKey(),
-                            background: Container(color: Colors.red),
-                            onDismissed: (direction) {
-                              bloc.delete(result.id);
-                            },
-                            child: ListTile(
-                              title: Text(result.code),
-                              subtitle: Text(formattedDate),
-                            ),
-                          ),
-                        );
-                      }));
-            }
-          }),
-    ]);
+    return listFuture();
   }
 }
